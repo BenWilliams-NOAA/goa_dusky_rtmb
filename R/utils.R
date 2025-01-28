@@ -2,6 +2,19 @@
 # ben.williams@noaa.gov
 # 2025-01
 
+# load ----
+library(RTMB)
+library(Matrix)
+library(tidyverse)
+library(here)
+library(scico)
+library(stringr)
+# theme_set(afscassess::theme_report())
+# remotes::install_github("fishfollower/compResidual/compResidual", force=TRUE)
+# we recommend running this is a fresh R session or restarting your current session
+# install.packages('StanEstimators', repos = c('https://andrjohns.r-universe.dev', 'https://cloud.r-project.org'))
+# remotes::install_github('Cole-Monnahan-NOAA/adnuts', ref='sparse_M')
+library(adnuts)
 # parameter plots ----
 plot_par <- function(item, post=NULL, report, rep_item) {
   
@@ -16,9 +29,19 @@ plot_par <- function(item, post=NULL, report, rep_item) {
       dplyr::summarize(max_y = max(y)) %>%
       pull(max_y)
     
-    p1 + ylab("") +
-      annotate("segment", x = log(report[[rep_item]]), xend = log(report[[rep_item]]), y = 0, yend = max_y,
-               linetype = 1, linewidth = 1.25)
+    if(length(grep('log', item))!=0) {
+        p1 + ylab("") +
+          annotate("segment", x = log(report[[rep_item]]), xend = log(report[[rep_item]]), 
+                   y = 0, yend = max_y,
+                   linetype = 1, linewidth = 1.25)+
+        theme_minimal()
+      } else {
+        p1 + ylab("") +
+          annotate("segment", x = report[[rep_item]], xend = report[[rep_item]], 
+                   y = 0, yend = max_y,
+                   linetype = 1, linewidth = 1.25) +
+          theme_minimal()
+      }
   } else {
     item %>% 
       as.data.frame() %>% 
@@ -36,6 +59,20 @@ plot_par <- function(item, post=NULL, report, rep_item) {
     p1 + ylab("") +
       annotate("segment", x = ri, xend = ri, y = 0, yend = max_y,
                linetype = 1, linewidth = 1.25)
+    
+    if(length(grep('log', item))!=0) {
+      p1 + ylab("") +
+        annotate("segment", x = log(report[[rep_item]]), xend = log(report[[rep_item]]), 
+                 y = 0, yend = max_y,
+                 linetype = 1, linewidth = 1.25) +
+        theme_minimal()
+    } else {
+      p1 + ylab("") +
+        annotate("segment", x = report[[rep_item]], xend = report[[rep_item]], 
+                 y = 0, yend = max_y,
+                 linetype = 1, linewidth = 1.25) +
+        theme_minimal()
+    }
   }
   
 }
@@ -511,3 +548,52 @@ resids <- function(obs, pred, iss, yrs, ind, label = 'Age', outlier=3) {
 # (out$pearson +
 #     out$osa) /
 #   (out$agg + out$ss) + plot_layout(guides = "collect") 
+
+
+# francis rewt -----
+calc_wt <- function(obs, pred, iss, ages) {
+  n = length(iss)
+  resids = numeric(n)
+  for(i in 1:n) {
+    meano = sum(obs[,i] * ages)
+    meane = sum(pred[,i] * ages)
+    diff = meano-meane
+    x = sum(ages^2 * pred[,i])-meane^2
+    resids[i] = diff / sqrt(x / iss[i])
+  }
+  return(1 / var(resids))
+}
+
+get_wt <- function(data, rep, iter) {
+  data.frame(iter = iter,
+             fac = calc_wt(obs = data$fish_age_obs, pred = oj$report(oj$env$last.par.best)$fish_age_pred, iss = data$fish_age_iss, ages = data$ages),
+             sac = calc_wt(obs = data$srv_age_obs, pred = rep$srv_age_pred, iss = data$srv_age_iss, ages = data$ages),
+             fsc = calc_wt(obs = data$fish_size_obs, pred = rep$fish_size_pred, iss = data$fish_size_iss, ages = data$length_bins))
+}
+
+francis_rewt <- function(data, model, pars, map=NULL, iters=10) {
+  weights = wnew = data.frame(iter=0, fac = data$fish_age_wt, sac = data$srv_age_wt, fsc = data$fish_size_wt)
+  
+  for(i in 1:iters) {
+    data$fish_age_wt = weights$fac[i]
+    data$srv_age_wt = weights$sac[i]
+    data$fish_size_wt = weights$fsc[i]
+    
+    if(is.null(map)) {
+      oj <- RTMB::MakeADFun(f,
+                            pars) 
+    } else {
+      oj <- RTMB::MakeADFun(model,
+                            pars,
+                            map = map) 
+    }
+    ff <- nlminb(start = oj$par,
+                 objective = oj$fn,
+                 gradient = oj$gr,
+                 control = list(iter.max=100000,
+                                eval.max=20000))
+    wnew = get_wt(data, oj$report(oj$env$last.par.best), iter=i)
+    weights = rbind(weights, wnew)
+  }
+  weights
+}

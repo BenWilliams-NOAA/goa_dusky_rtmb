@@ -40,14 +40,7 @@ f <- function(pars) {
   N_spr = sb_spr = matrix(1, A, 4)
   
   # priors -----------------
-  # admb priors do not include a constant that is in dnorm, so removing them
-  # nll_M = dnorm(log(M), log(mean_M), cv_M, TRUE)
-  # nll_M = -(ll + log(sqrt(2 * pi) * cv_M))
-  # nll_q = dnorm(log(q), log(mean_q), cv_q, TRUE)
-  # nll_q = -(ll + log(sqrt(2 * pi) * cv_q))
-  # nll_q = dnorm(q, mean_q, cv_q, TRUE)
-  # nll_sigmaR = dnorm(sigmaR, mean_sigmaR, cv_sigmaR, TRUE)
-  
+
   nll_M = (log(M) - log(mean_M))^2 / (2 * cv_M^2)
   nll_q = (log(q) - log(mean_q))^2 / (2 * cv_q^2)
   nll_sigmaR = (log(sigmaR / mean_sigmaR))^2 / (2 * cv_sigmaR^2)
@@ -74,15 +67,6 @@ f <- function(pars) {
     }
   }
   ## population ----
-  # not using this
-  ## Bzero
-  # initNat[1] = exp(log_mean_R)
-  # for (a in 2:A) {
-  #   initNat[a] <- initNat[a-1] * exp(-M)
-  # }
-  # initNat[A] <- initNat[A] / (1 - exp(-M))
-  # Bzero = sum(initNat * wt_mature * spawn_adj)
-  
   ## Nat ----
   # populate first row
   # need to use correct log_Rt to match ADMB model (the init_log_Rt are in reverse order)

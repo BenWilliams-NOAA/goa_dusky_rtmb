@@ -2,19 +2,10 @@
 # ben.williams
 # 2025-01
 
-# load ----
-library(RTMB)
-library(Matrix)
-library(tidyverse)
-library(here)
-library(scico)
-library(stringr)
-# theme_set(afscassess::theme_report())
-
-# functions 
+# load ---
 source(here::here("R", "models.r"))
 source(here::here("R", "utils.r"))
-
+# functions ----
 get_vec <- function(x, data, ind = 0, type = 1) {
   if(type!=1) {
     as.numeric(str_split(data[grep(x, data)], "\t")[[1]][1])
@@ -39,7 +30,6 @@ maa = get_vec("Maturity", REP, 0)
 wt_mature = maa * waa * 0.5
 spawn_mo = 3
 
-
 catch_obs = get_vec('obs_catch', DAT,ind=3)
 catch_ind = rep(1, length(years))
 catch_wt = ifelse(years<=1991, 2, 50)
@@ -48,7 +38,6 @@ srv_yrs = get_vec('Trawl survey years:', DAT, ind=1)
 srv_ind = ifelse(years %in% srv_yrs, 1, 0)
 srv_obs = get_vec('obs_srv1_biom', DAT, ind=1)
 srv_sd = get_vec('obs_srv1_se', DAT, ind=1)
-
 
 REP[grep("Obs_P_fish_age", REP):(grep("Pred_P_fish_age", REP)-2)] %>% 
   str_split(" ") %>%
@@ -130,8 +119,9 @@ log_F40= log(get_vec("\\bmF40", PAR, ind=1))
 log_F50 = log(get_vec("\\bmF50", PAR, ind=1))
 sigmaR = get_vec("\\bsigr", PAR, ind=1)
 
-# data ----
-
+# data list ----
+# data and parameters are input as lists
+# i've renamed a number of inputs and added the weights to the data as well (instead of a .ctl file)
 data <- list(
   ages = ages,
   years = years,
@@ -143,20 +133,24 @@ data <- list(
   catch_ind = catch_ind,
   catch_obs = catch_obs,
   catch_wt = catch_wt,
+  srv_yrs = srv_yrs,
   srv_obs = srv_obs,
   srv_ind = srv_ind,
   srv_sd = srv_sd,
   srv_wt = srv_wt,
+  fish_age_yrs = as.integer(fish_age_yrs),
   fish_age_obs = fish_age_obs,
-  fish_age_ind = fish_age_ind,
+  fish_age_ind = as.integer(fish_age_ind),
   fish_age_iss = fish_age_iss,
   fish_age_wt = fish_age_wt,
+  srv_age_yrs = as.integer(srv_age_yrs),
   srv_age_obs = srv_age_obs,
-  srv_age_ind = srv_age_ind,
+  srv_age_ind = as.integer(srv_age_ind),
   srv_age_iss = srv_age_iss,
   srv_age_wt = srv_age_wt,
+  fish_size_yrs = as.integer(fish_size_yrs),
   fish_size_obs = fish_size_obs,
-  fish_size_ind = fish_size_ind,
+  fish_size_ind = as.integer(fish_size_ind),
   fish_size_iss = fish_size_iss,
   fish_size_wt = fish_size_wt,
   age_error = ae,
@@ -171,6 +165,7 @@ data <- list(
   cv_sigmaR = 0.447213595,
   yield_ratio = yield
 )
+# make sure indexes are integers and matrices are unnamed
 str(data)
 
 # pars ----
@@ -189,7 +184,9 @@ pars = list(log_M = log_M,
             log_F40 = log_F40,
             log_F50 = log_F50,
             sigmaR = sigmaR)
-
+str(pars)
+# to hold a parameter fixed it gets "mapped"
+# to compare the assessments we can first fix all parameters and check results without optimizing the model
 map = list(log_M = factor(NA),
             log_a50C = factor(NA),
             deltaC = factor(NA),
@@ -206,17 +203,19 @@ map = list(log_M = factor(NA),
             log_F50 = factor(NA),
             sigmaR = factor(NA))
 
-
-
 # without running model ----
-f(pars)
+f(pars) # check to see that the model runs (should be a reasonable nll output)
+# build the model
 obj <- RTMB::MakeADFun(f,
                        pars,
                        map=map)
+# get the output from the model
 report <- obj$report(obj$env$last.par.best)
+# since projections cannot be auto differentiated they are moved to an external function (found in utils.r)
 proj_bio(report)
 
 # run model ----
+# optime the model using the same starting values as found in ADMB
 pars = list(log_M = log(0.07),
             log_a50C = log(7),
             deltaC = 3,
@@ -235,11 +234,216 @@ pars = list(log_M = log(0.07),
 obj1 = RTMB::MakeADFun(f,
                        pars,
                        map=list(log_M = factor(NA)))
+# this is the optimization
 fit = nlminb(start=obj1$par,
              objective = obj1$fn,
-             greadfient = obj1$gr,
+             gradient = obj1$gr,
              control = list(iter.max=100000,
                             eval.max=20000))
 rep1 <- obj1$report(obj1$env$last.par.best)
+
+# admb
+data.frame(year = 2025:2026,
+           spawn_bio = c(get_vec("Female_Spawning Biomass for 2025", REP, 1),
+                         get_vec("Female_Spawning_Biomass for 2026", REP, 1)),
+           total_bio = c(get_vec("TotalBiomass for 2025", REP, 1),
+                         get_vec("TotalBiomass for 2026", REP, 1)),
+           catch_abc = c(get_vec("\\bABC for 2025", REP, 1),
+                         get_vec("\\bABC for 2026", REP, 1)),
+           catch_ofl = c(get_vec("\\bOFL for 2025", REP, 1),
+                         get_vec("\\bOFL for 2026", REP, 1)),
+           F40 = c(get_vec("F_ABC for 2025", REP, 1),
+                   get_vec("F_ABC for 2026", REP, 1)),
+           F35 = c(get_vec("F_OFL for 2025", REP, 1),
+                   get_vec("F_OFL for 2026", REP, 1)))
+# bridge
+proj_bio(report)
+# optimized
 proj_bio(rep1)
 
+# some slight round error differences, but essentiall the same - can doublecheck all the loglikelihood values etc.
+# ssc noted that they appreciated tables 10-23:10-26 in the northern rockfish SAFE appendix https://www.npfmc.org/wp-content/PDFdocuments/SAFE/2024/GOAnork.pdf
+
+# review some of the outputs
+# sd of key outputs ----
+sdrep = sdreport(obj1, getJointPrecision=TRUE)
+summary(sdrep, "report") %>% 
+  as.data.frame() %>% 
+  mutate(lci = Estimate - 1.96 * `Std. Error`,
+         uci = Estimate + 1.96 * `Std. Error`) %>% 
+  tibble::rownames_to_column('item') %>% 
+  filter(!(item %in% c('q', 'M'))) %>% 
+  mutate(item = gsub('\\..*', '', item),
+         year = c(data$years, data$srv_yrs, rep(data$years,3))) -> m24_se
+
+## mcmc ----
+Q <- sdrep$jointPrecision
+# random effects or no?
+if(!is.null(Q)) {
+  M <- solve(Q)
+} else {
+  M <- sdrep$cov.fixed
+  Q <- solve(M)
+}
+globals <- list(data = data)
+chains <- 5
+
+# Cole recommends 5 chains, 1000 iters, 250 warmup
+mcmc <- sample_sparse_tmb(obj1, iter = 1000,
+                          warmup = 400, 
+                          chains = 1, cores = 1,
+                          metric='dense', Qinv=M, Q=Q,
+                          globals = globals, skip_optimization=TRUE)
+
+post = adnuts::extract_samples(mcmc)
+mpost = as.matrix(post)
+r = list()
+# process posterior
+for(i in 1:nrow(mpost)) {
+  r[[i]] = obj1$report(mpost[i,])
+}
+
+rep_out <- function(rep, data, item = 'spawn_bio') {
+  purrr::map(rep, item) %>% 
+    purrr::map(., ~as.data.frame(.)) %>% 
+    bind_rows(.id = 'sim') %>% 
+    mutate(year = rep(data$years, length(rep)))
+}
+
+purrr::map(r, proj_bio) %>% 
+  purrr::map(., ~as.data.frame(.)) %>% 
+  bind_rows(.id = 'sim') -> projs
+
+tots = rep_out(r, data, 'tot_bio')  
+ssb = rep_out(r, data, 'spawn_bio')
+Ft = rep_out(r, data, 'Ft')
+recs = rep_out(r, data, 'recruits')  
+
+plot_par(item ='log_a50S', post=post, rep=rep1, rep_item='a50S')
+plot_par(item ='log_q', post=post, rep=rep2, rep_item='q')
+
+
+# francis rewt
+weights = francis_rewt(data, f, pars, map=list(log_M=factor(NA)))
+
+# update data with new weights
+data$fish_age_wt = last(weights$fac)
+data$srv_age_wt = last(weights$sac)
+data$fish_size_wt = last(weights$fsc)
+
+# rerun model with new weights
+obj2 = RTMB::MakeADFun(f,
+                       pars,
+                       map=list(log_M = factor(NA)))
+# this is the optimization
+fit2 = nlminb(start=obj2$par,
+             objective = obj2$fn,
+             gradient = obj2$gr,
+             control = list(iter.max=100000,
+                            eval.max=20000))
+rep2 <- obj2$report(obj2$env$last.par.best)
+proj_bio(rep2)
+
+# plot catch
+data.frame(year = data$years,
+           obs = data$catch_obs,
+           rep1 = rep1$catch_pred,
+           rep2 = rep2$catch_pred) %>% 
+  tidyr::pivot_longer(-year) %>% 
+  ggplot(aes(year, value, color=name, shape=name)) + 
+  geom_point() + 
+  geom_line() +
+  theme_minimal() +
+  scico::scale_color_scico_d(palette = 'roma')
+
+
+
+# plot survey
+data.frame(year = data$srv_yrs,
+           obs = data$srv_obs,
+           sd = data$srv_sd,
+           rep1 = rep1$srv_pred,
+           rep2 = rep2$srv_pred) %>% 
+  mutate(lci = obs - 1.96 * sd,
+         uci = obs + 1.96 * sd) %>% 
+  tidyr::pivot_longer(-c(year, sd, obs, lci, uci)) %>% 
+  ggplot(aes(year, value, color=name, shape=name)) + 
+  geom_point(aes(y=obs), color='gray') + 
+  geom_errorbar(aes(ymin=lci, ymax=uci), color='gray') + 
+  geom_line() +
+  theme_minimal() +
+  scico::scale_color_scico_d(palette = 'roma') +
+  expand_limits(y=0)
+
+# comp ----
+
+plot_comp <- function(data, rep, type, plot=TRUE) {
+  obs = as.data.frame(data[paste0(type, '_obs')])
+  pred = as.data.frame(rep[paste0(type, '_pred')])
+  names(pred) = names(obs) = data[paste0(type, '_yrs')][[1]]
+  id = deparse(substitute(rep))
+  if(length(grep('age', type))==0) {
+    ind = data$length_bins
+    x = "Length bins"
+  } else {
+    ind = data$ages
+    x = "Ages"
+  }
+  obs %>% 
+    tidytable::mutate(index = ind,
+                      id = 'obs') %>% 
+    tidytable::bind_rows(
+      pred %>% 
+        tidytable::mutate(index = ind, 
+                          id = id)) %>% 
+        tidytable::pivot_longer(-c(index, id)) -> dat
+    
+  if(isTRUE(plot)){
+    dat %>% 
+  ggplot(aes(index, value, color=id)) + 
+    geom_col(data = . %>% filter(id=='obs'), color='gray', fill='lightgray') + 
+    geom_line(data = . %>% filter(id!='obs')) + 
+    facet_wrap(~name, dir='v') +
+    theme_minimal() +
+      xlab(x)
+  } else {
+  dat
+  }
+}
+
+plot_comp(data=data, rep=rep1, type="fish_age")
+plot_comp(data=data, rep=rep1, type="fish_size")
+plot_comp(data=data, rep=rep1, type="srv_age")
+
+# compare rep1 & rep2
+plot_comp(data=data, rep=rep1, type="srv_age", plot=F) %>% 
+  bind_rows(
+plot_comp(data=data, rep=rep2, type="srv_age", plot=F) 
+) %>% 
+  ggplot(aes(index, value, color=id)) + 
+  geom_col(data = . %>% filter(id=='obs'), color='gray', fill='lightgray', alpha = 0.4) + 
+  geom_line(data = . %>% filter(id!='obs')) + 
+  facet_wrap(~name, dir='v') +
+  scico::scale_color_scico_d(palette = 'roma')
+  theme_classic() 
+
+rep1$nll
+rep2$nll
+
+rep1$ssqcatch
+rep2$ssqcatch
+
+rep1$like_srv
+rep2$like_srv
+
+rep1$like_rec
+rep2$like_srv
+
+rep1$like_fish_age
+rep2$like_fish_age
+
+rep1$like_srv_age
+rep2$like_srv_age
+
+rep1$like_fish_size
+rep2$like_fish_size
