@@ -15,6 +15,7 @@ f <- function(pars) {
   # spawning adjustments
   spawn_fract = (spawn_mo - 1) / 12
   spawn_adj = exp(-M)^(spawn_fract)
+  
   # index values
   A = nrow(age_error) # number of ages in model
   A1 = length(ages) # number of ages in comps
