@@ -9,12 +9,24 @@ library(tidyverse)
 library(here)
 library(scico)
 library(stringr)
-# theme_set(afscassess::theme_report())
+theme_set(afscassess::theme_report())
 # remotes::install_github("fishfollower/compResidual/compResidual", force=TRUE)
 # we recommend running this is a fresh R session or restarting your current session
 # install.packages('StanEstimators', repos = c('https://andrjohns.r-universe.dev', 'https://cloud.r-project.org'))
+library(StanEstimators)
 # remotes::install_github('Cole-Monnahan-NOAA/adnuts', ref='sparse_M')
 library(adnuts)
+
+# functions ----
+# retrieve items from ADMb .dat, .rep, etc
+get_vec <- function(x, data, ind = 0, type = 1) {
+  if(type!=1) {
+    as.numeric(str_split(data[grep(x, data)], "\t")[[1]][1])
+  } else {
+    as.numeric(na.omit(as.numeric(str_split(data[grep(x, data)+ind], " ")[[1]])))
+  }
+}
+
 # parameter plots ----
 plot_par <- function(item, post=NULL, report, rep_item) {
   
@@ -597,3 +609,4 @@ francis_rewt <- function(data, model, pars, map=NULL, iters=10) {
   }
   weights
 }
+

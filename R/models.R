@@ -1,7 +1,7 @@
 f <- function(pars) {
   require(RTMB)
   RTMB::getAll(pars, data)
-  
+  "c" <- RTMB::ADoverload("c")
   # setup -------------
   # transform
   M = exp(log_M)
@@ -105,7 +105,8 @@ f <- function(pars) {
     }
     catch_pred[t] = sum(Cat[,t] * waa)
   }
-  ssqcatch = sum(catch_wt * (log(catch_obs + g) - log(catch_pred + g))^2)
+  ssqcatch = 0.0
+  ssqcatch = ssqcatch + sum(catch_wt * (log(catch_obs + g) - log(catch_pred + g))^2)
   
   ## survey biomass ----
   isrv = 1
@@ -116,7 +117,7 @@ f <- function(pars) {
       srv_pred[isrv] = sum(Nat[,t] * slx[,2] * waa) * q
       srv_var[isrv] = sqrt(log(1 + srv_sd[isrv]^2 / srv_obs[isrv]^2))
       srv_like = srv_like + log(srv_var[isrv]) + 0.5 * (log(srv_obs[isrv] / srv_pred[isrv]) / srv_var[isrv])^2;
-      
+
       # srv_like = srv_like + sum((log(srv_obs[isrv]) - log(srv_pred[isrv]))^2 /
       # (2 * (srv_sd[isrv] / srv_obs[isrv])^2))
       # srv_like = srv_like + sum((srv_obs[isrv]-srv_pred[isrv])^2/ (2.*(srv_sd[isrv]^2)))
@@ -124,7 +125,7 @@ f <- function(pars) {
     }
   }
   like_srv = srv_like * srv_wt
-  
+
   ## fishery age comp ----
   fish_age_lk = 0.0
   offset = 0.0
@@ -132,34 +133,34 @@ f <- function(pars) {
   for(t in 1:T) {
     if(fish_age_ind[t] == 1) {
       fish_age_pred[,icomp] = as.numeric(colSums((Cat[,t] / sum(Cat[,t])) * age_error))
-      offset = offset - fish_age_iss[icomp] * sum((fish_age_obs[,icomp] + g) * 
+      offset = offset - fish_age_iss[icomp] * sum((fish_age_obs[,icomp] + g) *
                                                     log(fish_age_obs[,icomp] + g))
-      fish_age_lk = fish_age_lk - sum(fish_age_iss[icomp] * (fish_age_obs[,icomp] + g) * 
+      fish_age_lk = fish_age_lk - sum(fish_age_iss[icomp] * (fish_age_obs[,icomp] + g) *
                                         log(fish_age_pred[,icomp] + g))
       icomp = icomp + 1
     }
   }
   fish_age_lk = fish_age_lk - offset
   like_fish_age = fish_age_lk * fish_age_wt
-  
+
   ## survey age comp ----
   srv_age_lk = 0.0
   offset_sa = 0.0
   icomp = 1
   for(t in 1:T) {
     if(srv_age_ind[t] == 1) {
-      srv_age_pred[,icomp] = as.numeric(colSums((Nat[,t] * slx[,2]) / 
+      srv_age_pred[,icomp] = as.numeric(colSums((Nat[,t] * slx[,2]) /
                                                   sum(Nat[,t] * slx[,2]) * age_error))
-      offset_sa = offset_sa - srv_age_iss[icomp] * sum((srv_age_obs[,icomp] + g) * 
+      offset_sa = offset_sa - srv_age_iss[icomp] * sum((srv_age_obs[,icomp] + g) *
                                                          log(srv_age_obs[,icomp] + g))
-      srv_age_lk = srv_age_lk - srv_age_iss[icomp] * sum((srv_age_obs[,icomp] + g) * 
+      srv_age_lk = srv_age_lk - srv_age_iss[icomp] * sum((srv_age_obs[,icomp] + g) *
                                                            log(srv_age_pred[,icomp] + g))
       icomp = icomp + 1
     }
   }
   srv_age_lk = srv_age_lk - offset_sa
   like_srv_age = srv_age_lk * srv_age_wt
-  
+
   ## fishery size comp ----
   icomp = 1
   fish_size_lk = 0.0
@@ -167,16 +168,16 @@ f <- function(pars) {
   for(t in 1:T) {
     if(fish_size_ind[t] == 1) {
       fish_size_pred[,icomp] = as.numeric(colSums((Cat[,t] / sum(Cat[,t])) * size_age))
-      offset_fs = offset_fs - fish_size_iss[icomp] * sum((fish_size_obs[,icomp] + g) * 
+      offset_fs = offset_fs - fish_size_iss[icomp] * sum((fish_size_obs[,icomp] + g) *
                                                            log(fish_size_obs[,icomp] + g))
-      fish_size_lk = fish_size_lk - fish_size_iss[icomp] * sum((fish_size_obs[,icomp] + g) * 
+      fish_size_lk = fish_size_lk - fish_size_iss[icomp] * sum((fish_size_obs[,icomp] + g) *
                                                                  log(fish_size_pred[,icomp] + g))
       icomp = icomp + 1
     }
   }
   fish_size_lk = fish_size_lk - offset_fs
   like_fish_size = fish_size_lk * fish_size_wt
-  
+
   # SPR ------------------------
   data.frame(log_Rt = log_Rt,
              pred_rec = Nat[1,],
@@ -187,7 +188,7 @@ f <- function(pars) {
   yrs_rec = df$year
   pred_rec = mean(df$pred_rec)
   stdev_rec = sqrt(sum((df$log_Rt - mean(df$log_Rt))^2) / (length(df$log_Rt) - 1))
-  
+
   for(a in 2:A) {
     N_spr[a,1] = N_spr[a-1,1] * exp(-M)
     N_spr[a,2] = N_spr[a-1,2] * exp(-(M + F50 * slx[a-1,1]))
@@ -196,13 +197,13 @@ f <- function(pars) {
   }
   # plus group
   N_spr[A,1] = N_spr[A-1,1] * exp(-M) / (1 - exp(-M))
-  N_spr[A,2] = N_spr[A-1,2] * exp(-(M + F50 * slx[A-1,1])) / 
+  N_spr[A,2] = N_spr[A-1,2] * exp(-(M + F50 * slx[A-1,1])) /
     (1 - exp(-(M + F50 * slx[A,1])))
-  N_spr[A,3] = N_spr[A-1,3] * exp(-(M + F40 * slx[A-1,1])) / 
+  N_spr[A,3] = N_spr[A-1,3] * exp(-(M + F40 * slx[A-1,1])) /
     (1 - exp(-(M + F40 * slx[A,1])))
-  N_spr[A,4] = N_spr[A-1,4] * exp(-(M + F35 * slx[A-1,1])) / 
+  N_spr[A,4] = N_spr[A-1,4] * exp(-(M + F35 * slx[A-1,1])) /
     (1 - exp(-(M + F35 * slx[A,1])))
-  
+
   # spawning spr
   for(a in 1:A) {
     sb_spr[a,1] = N_spr[a,1] * wt_mature[a] * exp(-spawn_fract * M)
@@ -210,23 +211,23 @@ f <- function(pars) {
     sb_spr[a,3] = N_spr[a,3] * wt_mature[a] * exp(-spawn_fract * (M + F40 * slx[a,1]))
     sb_spr[a,4] = N_spr[a,4] * wt_mature[a] * exp(-spawn_fract * (M + F35 * slx[a,1]))
   }
-  
+
   # spr reference points
   SB0 = sum(sb_spr[,1])
   SBF50 = sum(sb_spr[,2])
   SBF40 = sum(sb_spr[,3])
   SBF35 = sum(sb_spr[,4])
-  
+
   # spr penalities
   sprpen = 100. * (SBF50 / SB0 - 0.5)^2
   sprpen = sprpen + 100. * (SBF40 / SB0 - 0.4)^2
   sprpen = sprpen + 100. * (SBF35 / SB0 - 0.35)^2
-  
+
   # scale spr reference points
   B0 = SB0 * pred_rec
   B40 = SBF40 * pred_rec
   B35 = SBF35 * pred_rec
-  
+
   # likelihood/penalties --------------------
   like_rec = sum(c(log_Rt, init_log_Rt)^2) / (2 * sigmaR^2) + length(c(log_Rt, init_log_Rt)) * log(sigmaR) * wt_rec_var
   # like_rec = sum((c(log_Rt, init_log_Rt) + sigmaR * sigmaR / 2)^2) / (2 * sigmaR^2)
@@ -239,13 +240,13 @@ f <- function(pars) {
   nll = nll + like_fish_age
   nll = nll + like_srv_age
   nll = nll + like_fish_size
-  nll = nll + like_rec 
+  nll = nll + like_rec
   nll = nll + f_regularity
   nll = nll + nll_M
   nll = nll + nll_q
   nll = nll + nll_sigmaR
   nll = nll + sprpen
-  
+
   # reports -------------------
   RTMB::REPORT(ages)
   RTMB::REPORT(years)
@@ -257,30 +258,30 @@ f <- function(pars) {
   RTMB::REPORT(deltaS)
   RTMB::REPORT(q)
   RTMB::ADREPORT(q)
-  RTMB::REPORT(sigmaR)
-  RTMB::REPORT(log_mean_R)
-  RTMB::REPORT(log_Rt)
-  RTMB::ADREPORT(log_Rt)
-  RTMB::REPORT(log_mean_F)
-  RTMB::REPORT(log_Ft)
-  RTMB::REPORT(waa)
-  RTMB::REPORT(maa)
-  RTMB::REPORT(wt_mature)
-  RTMB::REPORT(yield_ratio)
-  RTMB::REPORT(Fat)
-  RTMB::REPORT(Zat)
-  RTMB::REPORT(Sat)
-  RTMB::REPORT(Cat)
-  RTMB::REPORT(Nat)
-  RTMB::REPORT(slx)
-  RTMB::REPORT(Ft)
-  RTMB::REPORT(catch_pred)
-  RTMB::REPORT(srv_pred)
-  
+   RTMB::REPORT(sigmaR)
+   RTMB::REPORT(log_mean_R)
+   RTMB::REPORT(log_Rt)
+   RTMB::ADREPORT(log_Rt)
+   RTMB::REPORT(log_mean_F)
+   RTMB::REPORT(log_Ft)
+   RTMB::REPORT(waa)
+   RTMB::REPORT(maa)
+   RTMB::REPORT(wt_mature)
+   RTMB::REPORT(yield_ratio)
+   RTMB::REPORT(Fat)
+   RTMB::REPORT(Zat)
+   RTMB::REPORT(Sat)
+   RTMB::REPORT(Cat)
+   RTMB::REPORT(Nat)
+   RTMB::REPORT(slx)
+   RTMB::REPORT(Ft)
+   RTMB::REPORT(catch_pred)
+   RTMB::REPORT(srv_pred)
+
   RTMB::REPORT(fish_age_pred)
   RTMB::REPORT(srv_age_pred)
   RTMB::REPORT(fish_size_pred)
-  
+
   RTMB::REPORT(tot_bio)
   RTMB::REPORT(spawn_bio)
   RTMB::REPORT(recruits)
@@ -299,7 +300,7 @@ f <- function(pars) {
   RTMB::REPORT(n_rec)
   RTMB::REPORT(yrs_rec)
   RTMB::REPORT(stdev_rec)
-  
+
   RTMB::REPORT(ssqcatch)
   RTMB::REPORT(like_srv)
   RTMB::REPORT(like_fish_age)

@@ -5,14 +5,6 @@
 # load ---
 source(here::here("R", "models.r"))
 source(here::here("R", "utils.r"))
-# functions ----
-get_vec <- function(x, data, ind = 0, type = 1) {
-  if(type!=1) {
-    as.numeric(str_split(data[grep(x, data)], "\t")[[1]][1])
-  } else {
-  as.numeric(na.omit(as.numeric(str_split(data[grep(x, data)+ind], " ")[[1]])))
-  }
-}
 
 # data ----
 # to match up exactly with ADMB use values from the input/output
@@ -24,7 +16,7 @@ PAR = readLines(here::here('admb', 'base.par'))
 rec_age = get_vec("rec_age", DAT, 1)
 years = get_vec("styr", DAT, 1):get_vec("endyr", DAT, 1)
 ages = rec_age:(get_vec("nages_D", DAT, 1)+rec_age-1)
-length_bins = get_vec("len_bin_labels", DAT, 1)
+length_bins = as.integer(get_vec("len_bin_labels", DAT, 1))
 waa = get_vec("Weight", REP, 0)
 maa = get_vec("Maturity", REP, 0)
 wt_mature = maa * waa * 0.5
@@ -34,8 +26,8 @@ catch_obs = get_vec('obs_catch', DAT,ind=3)
 catch_ind = rep(1, length(years))
 catch_wt = ifelse(years<=1991, 2, 50)
 
-srv_yrs = get_vec('Trawl survey years:', DAT, ind=1)
-srv_ind = ifelse(years %in% srv_yrs, 1, 0)
+srv_yrs = as.integer(get_vec('Trawl survey years:', DAT, ind=1))
+srv_ind = as.integer(ifelse(years %in% srv_yrs, 1, 0))
 srv_obs = get_vec('obs_srv1_biom', DAT, ind=1)
 srv_sd = get_vec('obs_srv1_se', DAT, ind=1)
 
@@ -47,8 +39,8 @@ REP[grep("Obs_P_fish_age", REP):(grep("Pred_P_fish_age", REP)-2)] %>%
   dplyr::slice(-1) %>% 
   dplyr::select_if(~sum(!is.na(.))>0) -> obs
 
-fish_age_yrs = obs$V1
-fish_age_ind = ifelse(years%in% fish_age_yrs, 1, 0)
+fish_age_yrs = as.integer(obs$V1)
+fish_age_ind = as.integer(ifelse(years%in% fish_age_yrs, 1, 0))
 fish_age_iss = obs$V33
 fish_age_obs = unname(t(as.matrix(dplyr::select(obs, V3:V29))))
 
@@ -60,8 +52,8 @@ REP[grep("Obs_P_srv1_age", REP):(grep("Pred_P_srv1_age", REP)-2)] %>%
   dplyr::slice(-1) %>% 
   dplyr::select_if(~sum(!is.na(.))>0) -> obs
 
-srv_age_yrs = obs$V1
-srv_age_ind = ifelse(years%in% srv_age_yrs, 1, 0)
+srv_age_yrs = as.integer(obs$V1)
+srv_age_ind = as.integer(ifelse(years%in% srv_age_yrs, 1, 0))
 srv_age_iss = obs$V33
 srv_age_obs = unname(t(as.matrix(dplyr::select(obs, V3:V29))))
 
@@ -73,8 +65,8 @@ REP[grep("Obs_P_fish_size", REP):(grep("Pred_P_fish_size", REP)-2)] %>%
   dplyr::slice(-1) %>% 
   dplyr::select_if(~sum(!is.na(.))>0) -> obs
 
-fish_size_yrs = obs$V1
-fish_size_ind = ifelse(years%in% fish_size_yrs, 1, 0)
+fish_size_yrs = as.integer(obs$V1)
+fish_size_ind = as.integer(ifelse(years%in% fish_size_yrs, 1, 0))
 fish_size_iss = obs$V38
 fish_size_obs = unname(t(as.matrix(dplyr::select(obs, V3:V34))))
 
@@ -138,19 +130,19 @@ data <- list(
   srv_ind = srv_ind,
   srv_sd = srv_sd,
   srv_wt = srv_wt,
-  fish_age_yrs = as.integer(fish_age_yrs),
+  fish_age_yrs = fish_age_yrs,
   fish_age_obs = fish_age_obs,
-  fish_age_ind = as.integer(fish_age_ind),
+  fish_age_ind = fish_age_ind,
   fish_age_iss = fish_age_iss,
   fish_age_wt = fish_age_wt,
-  srv_age_yrs = as.integer(srv_age_yrs),
+  srv_age_yrs = srv_age_yrs,
   srv_age_obs = srv_age_obs,
-  srv_age_ind = as.integer(srv_age_ind),
+  srv_age_ind = srv_age_ind,
   srv_age_iss = srv_age_iss,
   srv_age_wt = srv_age_wt,
-  fish_size_yrs = as.integer(fish_size_yrs),
+  fish_size_yrs = fish_size_yrs,
   fish_size_obs = fish_size_obs,
-  fish_size_ind = as.integer(fish_size_ind),
+  fish_size_ind = fish_size_ind,
   fish_size_iss = fish_size_iss,
   fish_size_wt = fish_size_wt,
   age_error = ae,
@@ -261,7 +253,7 @@ proj_bio(report)
 # optimized
 proj_bio(rep1)
 
-# some slight round error differences, but essentiall the same - can doublecheck all the loglikelihood values etc.
+# some slight round error differences, but essentially the same - can doublecheck all the loglikelihood values etc.
 # ssc noted that they appreciated tables 10-23:10-26 in the northern rockfish SAFE appendix https://www.npfmc.org/wp-content/PDFdocuments/SAFE/2024/GOAnork.pdf
 
 # review some of the outputs
@@ -320,7 +312,7 @@ Ft = rep_out(r, data, 'Ft')
 recs = rep_out(r, data, 'recruits')  
 
 plot_par(item ='log_a50S', post=post, rep=rep1, rep_item='a50S')
-plot_par(item ='log_q', post=post, rep=rep2, rep_item='q')
+plot_par(item ='log_q', post=post, rep=rep1, rep_item='q')
 
 
 # francis rewt
