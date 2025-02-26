@@ -23,7 +23,7 @@ wt_mature = maa * waa * 0.5
 spawn_mo = 3
 
 catch_obs = get_vec('obs_catch', DAT,ind=3)
-catch_ind = rep(1, length(years))
+catch_ind = as.integer(rep(1, length(years)))
 catch_wt = ifelse(years<=1991, 2, 50)
 
 srv_yrs = as.integer(get_vec('Trawl survey years:', DAT, ind=1))
@@ -197,6 +197,7 @@ map = list(log_M = factor(NA),
 
 # without running model ----
 f(pars) # check to see that the model runs (should be a reasonable nll output)
+compiler::enableJIT(0)
 # build the model
 obj <- RTMB::MakeADFun(f,
                        pars,
@@ -223,6 +224,7 @@ pars = list(log_M = log(0.07),
             log_F40 = 0,
             log_F50 = 0,
             sigmaR = 1.5)
+
 obj1 = RTMB::MakeADFun(f,
                        pars,
                        map=list(log_M = factor(NA)))
@@ -316,7 +318,7 @@ plot_par(item ='log_q', post=post, rep=rep1, rep_item='q')
 
 
 # francis rewt
-weights = francis_rewt(data, f, pars, map=list(log_M=factor(NA)))
+weights = francis_rewt(data, model=f, pars, map=list(log_M=factor(NA)))
 
 # update data with new weights
 data$fish_age_wt = last(weights$fac)
@@ -417,7 +419,7 @@ plot_comp(data=data, rep=rep2, type="srv_age", plot=F)
   geom_line(data = . %>% filter(id!='obs')) + 
   facet_wrap(~name, dir='v') +
   scico::scale_color_scico_d(palette = 'roma')
-  theme_classic() 
+
 
 rep1$nll
 rep2$nll
