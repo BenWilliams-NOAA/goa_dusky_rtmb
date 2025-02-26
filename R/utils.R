@@ -592,7 +592,7 @@ francis_rewt <- function(data, model, pars, map=NULL, iters=10) {
     data$fish_size_wt = weights$fsc[i]
     
     if(is.null(map)) {
-      oj <- RTMB::MakeADFun(f,
+      oj <- RTMB::MakeADFun(model,
                             pars) 
     } else {
       oj <- RTMB::MakeADFun(model,
