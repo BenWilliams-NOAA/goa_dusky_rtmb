@@ -337,7 +337,7 @@ fit2 = nlminb(start=obj2$par,
                             eval.max=20000))
 rep2 <- obj2$report(obj2$env$last.par.best)
 proj_bio(rep2)
-
+proj_bio(rep1)
 # plot catch
 data.frame(year = data$years,
            obs = data$catch_obs,

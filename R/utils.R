@@ -583,7 +583,7 @@ get_wt <- function(data, rep, iter) {
              fsc = calc_wt(obs = data$fish_size_obs, pred = rep$fish_size_pred, iss = data$fish_size_iss, ages = data$length_bins))
 }
 
-francis_rewt <- function(data, model, pars, map=NULL, iters=10) {
+francis_rewt <- function(data, model=f, pars, map=NULL, iters=10) {
   weights = wnew = data.frame(iter=0, fac = data$fish_age_wt, sac = data$srv_age_wt, fsc = data$fish_size_wt)
   
   for(i in 1:iters) {

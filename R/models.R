@@ -1,7 +1,7 @@
 f <- function(pars) {
   require(RTMB)
   RTMB::getAll(pars, data)
-  "c" <- RTMB::ADoverload("c")
+  # "c" <- RTMB::ADoverload("c")
   # setup -------------
   # transform
   M = exp(log_M)
@@ -11,7 +11,7 @@ f <- function(pars) {
   F50 = exp(log_F50)
   F40 = exp(log_F40)
   F35 = exp(log_F35)
-  
+
   # spawning adjustments
   spawn_fract = (spawn_mo - 1) / 12
   spawn_adj = exp(-M)^(spawn_fract)
@@ -28,7 +28,7 @@ f <- function(pars) {
   g = 0.00001 # small number
   
   # containers ---------
-  slx = matrix(NA, A, 2) # selectivity - fishery and survey
+  slx = matrix(0, A, 2) # selectivity - fishery and survey
   Bat = Cat = Nat = Fat = Zat = Sat = matrix(0, A, T) 
   initNat = rep(0, A) 
   catch_pred = rep(0, T)
@@ -52,7 +52,6 @@ f <- function(pars) {
   sel <- function(a, a50, delta) {
     1. / (1. + exp(-2.944438979 * ((a+adj) - a50) / delta))
   }
-  
   for(a in 1:A) {
     slx[a,1] = sel(a, a50C, deltaC)
     slx[a,2] = sel(a, a50S, deltaS)
