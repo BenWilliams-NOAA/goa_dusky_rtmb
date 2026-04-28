@@ -197,7 +197,7 @@ map = list(log_M = factor(NA),
 
 # without running model ----
 f(pars) # check to see that the model runs (should be a reasonable nll output)
-compiler::enableJIT(0)
+
 # build the model
 obj <- RTMB::MakeADFun(f,
                        pars,
